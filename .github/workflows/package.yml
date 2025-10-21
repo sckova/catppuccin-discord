@@ -1,0 +1,60 @@
+name: Build and Release Themes
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build project and prepare artifacts
+        run: |
+          node build.js
+          yarn build
+
+          mkdir -p dist/themes/standard dist/themes/latte dist/themes/frappe dist/themes/macchiato dist/themes/mocha
+
+          cp -rv dist/dist/catppuccin-latte.theme.css dist/themes/standard
+          cp -rv dist/dist/catppuccin-frappe.theme.css dist/themes/standard
+          cp -rv dist/dist/catppuccin-macchiato.theme.css dist/themes/standard
+          cp -rv dist/dist/catppuccin-mocha.theme.css dist/themes/standard
+
+          cp -rv dist/dist/catppuccin-latte-*.theme.css dist/themes/latte
+          cp -rv dist/dist/catppuccin-frappe-*.theme.css dist/themes/frappe
+          cp -rv dist/dist/catppuccin-macchiato-*.theme.css dist/themes/macchiato
+          cp -rv dist/dist/catppuccin-mocha-*.theme.css dist/themes/mocha
+
+          tar czvf dist/catppuccin-latte-accents.tar.gz -C dist/themes latte
+          tar czvf dist/catppuccin-frappe-accents.tar.gz -C dist/themes frappe
+          tar czvf dist/catppuccin-macchiato-accents.tar.gz -C dist/themes macchiato
+          tar czvf dist/catppuccin-mocha-accents.tar.gz -C dist/themes mocha
+
+          tar czvf dist/themes.tar.gz -C dist themes
+
+      - name: Create GitHub release with assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: commit-${{ github.sha }}
+          name: Rolling release
+          body: "Automated release for commit ${{ github.sha }}"
+          files: |
+            dist/themes/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
