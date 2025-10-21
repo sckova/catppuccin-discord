@@ -1,0 +1,65 @@
+name: Build and Release Themes
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build project and prepare artifacts
+        run: |
+          node build.js
+          yarn build
+          mkdir -p dist/themes
+          cp -rv dist/dist/*.css dist/themes
+          tar czf dist/themes.tar.gz -C dist themes
+
+      - name: Create temporary release tag
+        id: tag
+        run: |
+          TAG="commit-${GITHUB_SHA::7}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          git tag $TAG
+          git push origin $TAG
+
+      - name: Create GitHub release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Release ${{ steps.tag.outputs.tag }}
+          body: "Automated release for commit ${{ github.sha }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload tarball to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/themes.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload individual CSS files to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/themes/*.css
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
