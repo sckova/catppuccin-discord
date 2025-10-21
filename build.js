@@ -45,9 +45,14 @@ async function generateAccents(sourceFilePath) {
 
 // replace brand and write to separate file
 async function generateAccent(sourceFileData, sourceFilePath, accent) {
-  const modifiedFileContent = sourceFileData.replace(
+  let modifiedFileContent = sourceFileData.replace(
     /\$brand: .*;/gm,
     `$brand: \$${accent};`,
+  );
+  modifiedFileContent = modifiedFileContent.replace(
+    /(@name\s+Catppuccin\s+\w+)/gm,
+    (_, match) =>
+      `${match} ${accent.charAt(0).toUpperCase() + accent.slice(1)}`,
   );
   const outputFileName = sourceFilePath
     .split(".")
